@@ -1,0 +1,576 @@
+---
+title: "Proyecto No.2 Serie de Tiempo"
+Clase: "Econometria en R"
+Grupo: "Yalmar Cardenas y Margerys Salgado"
+output: html_notebook
+---
+
+# EJERCICIO No.1
+
+## Libreria
+
+```{r}
+rm(list = ls())
+
+library(dplyr)
+library(forecast)
+library(ggplot2)
+library(lubridate)
+library(tidyverse)
+
+```
+
+##No.1: Cree un arreglo con distribucion de probabilidad normal con media=0 y desviacion standar=5
+```{r}
+set.seed(123)
+x <- rnorm(1500, mean=0, sd=5)
+```
+
+##No.2: Cree una suma acumulada de estos valores
+```{r}
+y = cumsum(x)
+```
+
+##No.3: Muestre una grafica de la serie temporal
+```{r}
+plot(x, type = 'l', col='gray')
+plot(y, type = 'l', col='lightblue')
+```
+comentario: Las graficas de las variables creadas, x=representa arreglo con distribucion de probabilidad normal, y=suma acumulada de los valores de x. Se puede destacar la tendencia registrada en la variable y.
+
+##No.4: Cree una serie de tiempo con la funcion ts()
+```{r}
+x.ts <- ts(data=x, start=c(1900, 2), frequency = 12)
+y.ts <- ts(data=y, start=c(1900, 2), frequency = 12)
+
+lattice::xyplot.ts(x.ts)
+lattice::xyplot.ts(y.ts)
+```
+
+## No.5: Verifique la descomposicion de la serie de tiempo, usando una frecuencia de 12
+```{r}
+data <- decompose(y.ts)
+data
+plot(data$seasonal)
+plot(data$trend)
+plot(data$random)
+plot(data$x)
+plot(data$figure)
+```
+
+## No.6: Realice comentario sobre cada uno de los componentes de la serie temporal
+
+Una serie de tiempo, es una secuencia de casos u observaciones en intervalos de tiempo que sigue una estructura regular. Este tipo de datos tiene a su vez componentes propios que actuan al mismo tiempo, estos son los que contribuyen a formar las caracteristicas de la serie de tiempo; entre los cuales podemos mencionar:
+
+1) Tendencia:
+Muestra el patron que sigue la evolucion de los datos a traves del tiempo de analisis, este componente constituye la base del incremento o decremento de la serie de tiempo, se identifica con un movimiento suave de la serie a largo plazo.
+Ejm: la produccion de cierto producto en una empresa, tiene una tendencia que estara afectada por diversos factores.
+
+2) Estacionalidad
+Representa la variacion de los datos en la serie debido a influencias estacionales. Estos efectos se pueden medir explicitamente o incluso se pueden eliminar de la serie de datos, a este proceso se le llama desestacionalizacion de la serie. Ejm: una empresa de venta de helados sabe que durante los meses de invierno las ventas de sus productos caeran debido al clima en dicha estacion.
+
+3) Ciclicidad
+Hace referencia a las secuencias o patrones de crecimiento y decrecimiento en la linea de tendencia que duran mas de un año. Este componente es el conjunto de ciclos, de mas de un año de duracion que se producen por diversos factores.
+
+4) La variacion irregular o aleatoriedad
+Se debe a factores de corto plazo, que no pueden preverse y que afectan a la serie; asimismo, explica la variabilidad irregular del comportamiento de la serie y es impredecible. Esta componente no responde a ningun patron de comportamiento,
+sino que es el resultado de factores fortuitos o aleatorios que inciden de forma aislada en una serie de tiempo.
+
+## No.7: Determine si la serie es estacionaria o no (stationarity)
+
+Una serie de tiempo es estrictamente estacionario si la distribucion no varia despues de un cambio arbitrario de tiempo.
+Se debe notar que la estacionariedad estricta implica que la media y la varianza son constantes en el tiempo y la autocovarianza solo depende del rezago. Por su parte, si una serie no estrictamente estacionaria pero la media y la varianza son constantes en el tiempo y la autocovarianza solo depende del rezago, la serie tendra estacionariedad de segundo orden.
+
+#### Variable "X"
+```{r}
+plot.ts(x)
+acf(x.ts)
+pacf(x.ts)
+```
+
+#### Variable "Y"
+```{r}
+plot.ts(y)
+acf(y.ts)
+pacf(y.ts)
+```
+
+Comentario: 
+
+Variable "X": de acuerdo a las graficas, se puede concluir que muestra las caracteristicas de una serie de tiemppo estacionaria, la media y varianza se muestran constantes en el tiempo. La estructura de la funcion de autocorrelacion muestra en su correlograma como la serie tiene en los valores de sus autocorrelaciones significancia, muestra un descenso repentino a partir del primer rezago, para luego contenerse en las bandas; por su parte, la funcion de autocorrelacion parcial muestran los valores contenidos en las bandas.
+
+Variable "Y": muestra una tendencia, se puede decir que no es estacionaria. En relacion la estructura de la función de autocorrelación, tanto total como parcial, hace indicar que la serie sigue un ARMA(1,0), ya que vemos que para la función de autocorrelación a medida que aumentan los rezagos esta decrece de forma gradual, caso diferente para la función de autocorrelación parcial, que muestra un descenso repentino a partir del segundo rezago.
+
+## No.8: De no ser estacionaria, investigue como es posible resolver este problema usando diferenciacion temporal
+
+La estacionariedad se obtiene diferenciando la serie y aplicando logaritmos (Trasformacion Box-Cox). A partir de las correlaciones se va a poder tomar decisiones sobre cual es el tipo de modelo estadistico mas adecuado para dicha serie de tiempo.
+```{r}
+library(tseries)
+
+ABC = diff(y.ts)
+head(ABC)
+
+#A123 <- log(y.ts)
+#No se pudo realizar transfromacion logaritmica
+```
+
+#### Pruebas Estadisticas 
+```{r}
+adf.test(ABC)
+```
+Comentario: como puede verse, rechazamos la hipótesis nula de que los datos transformados en el primer registro de diferencias tienen una raíz unitaria. Se puede decir que la serie temporal es estacionaria.
+
+#### Prueba Estadistica 
+```{r}
+kpss.test(ABC, null="Trend")
+```
+Comentario: Como puede verse, no rechazamos la hipótesis nula de que los datos son tendencia estacionarios.
+
+
+## Pregunta No.9: Muestre una grafica sobre la serie temporal resultante
+```{r}
+plot(x.ts)
+plot(ABC)
+
+#acf(ABC)
+#pacf(ABC)
+```
+
+
+# EJERCICIO No.2
+
+Con el dataset de VentasProductos realice los siguientes pasos:
+1) Analice la estructura del dataset, no que existe una variable de timestamp, producto y valor de producción.
+2) Cree un modelo arima usando auto.arima para cada uno de los productos en la data.
+3) Tome en cuenta que cada id_producto posee 38 observaciones cada uno, por lo que deberá desarrollar un mecanismo que le permita seleccionar la data de timestamp y producción por cada valor de id_producto para poder seleccionar y entrenar el modelo.
+4) Genere las predicciones para cada caso el cual sea la mitad de la ventana de data actual es decir 16 ciclos (meses) hacia delante.
+5) Genere una gráfica para cada caso.
+
+## Cargar dataset
+```{r}
+dataset <- read.csv("dataOut.csv", sep=",")
+dataset <- as.data.frame(dataset)
+
+str(dataset)
+```
+
+## Crear Variable 'timestamp' como una serie de tiempo
+```{r}
+dataset$time <- ts(dataset$timestamp, frequency = 12)
+```
+
+## Crear una variable para Productos con un id manejable para el analisis de los datos
+```{r}
+ABC <- dataset %>%
+  group_by(id_producto) %>%
+  summarise(produccion = sum(produccion))
+#ABC
+
+dataset$producto <- as.factor(substr(dataset$id_producto, start = 1, stop = 5))
+levels(dataset$producto) <- paste0("producto", 1:16)
+```
+
+## Visualizacion Produccion por producto
+```{r}
+producto <- table(dataset %>% select(producto, produccion))
+ggplot(data= dataset %>% group_by(producto) %>% 
+         summarise(produccion = sum(produccion)), aes(x=producto, y=produccion)) +
+  geom_bar(stat = "identity", width = 0.8, fill="lightblue") +
+  coord_flip() +
+  ggtitle("Grafica: Produccion por Productos") +
+  xlab("Productos") +
+  ylab("Total Produccion") +
+  theme_minimal()
+
+```
+
+## dataset por productos individuales
+```{r}
+Prod01 <- dataset %>% filter(producto == 'producto1') %>% select(time, produccion, producto)
+Prod02 <- dataset %>% filter(producto == 'producto2') %>% select(time, produccion, producto)
+Prod03 <- dataset %>% filter(producto == 'producto3') %>% select(time, produccion, producto)
+Prod04 <- dataset %>% filter(producto == 'producto4') %>% select(time, produccion, producto)
+Prod05 <- dataset %>% filter(producto == 'producto5') %>% select(time, produccion, producto)
+Prod06 <- dataset %>% filter(producto == 'producto6') %>% select(time, produccion, producto)
+Prod07 <- dataset %>% filter(producto == 'producto7') %>% select(time, produccion, producto)
+Prod08 <- dataset %>% filter(producto == 'producto8') %>% select(time, produccion, producto)
+Prod09 <- dataset %>% filter(producto == 'producto9') %>% select(time, produccion, producto)
+Prod10 <- dataset %>% filter(producto == 'producto10') %>% select(time, produccion, producto)
+Prod11 <- dataset %>% filter(producto == 'producto11') %>% select(time, produccion, producto)
+Prod12 <- dataset %>% filter(producto == 'producto12') %>% select(time, produccion, producto)
+Prod13 <- dataset %>% filter(producto == 'producto13') %>% select(time, produccion, producto)
+Prod14 <- dataset %>% filter(producto == 'producto14') %>% select(time, produccion, producto)
+Prod15 <- dataset %>% filter(producto == 'producto15') %>% select(time, produccion, producto)
+Prod16 <- dataset %>% filter(producto == 'producto16') %>% select(time, produccion, producto)
+```
+
+#### Producto No.1
+```{r}
+# Declarar que se trabaja con serie de tiempo
+# ====================================================================
+Prod01.ts =  ts(Prod01$produccion, start = c(2015,1), frequency = 12)
+
+# Visualizacion de la estructura de datos
+# ====================================================================
+plot(Prod01$produccion, type = "l", main = "Producto No.1")
+plot(decompose(Prod01.ts))
+acf(Prod01.ts)
+pacf(Prod01.ts)
+
+# Estimar Modelo
+# ===================================================================
+Prod01.arima = auto.arima(x=Prod01.ts)
+Prod01.arima
+Prod01.predict <- predict(Prod01.arima, n.ahead = 16)
+Prod01.rev <- ts((Prod01.predict$pred), start=c(2022,1), freq=12)
+ts.plot(cbind(Prod01.ts, Prod01.rev), lty=1:2, main="Pronóstico para Producto No.1")
+
+```
+
+#### Producto No.2
+```{r}
+# Declarar que se trabaja con serie de tiempo
+# ====================================================================
+Prod02.ts =  ts(Prod02$produccion, start= c(2015,1), frequency = 12)
+
+# Visualizacion de la estructura de datos
+# ====================================================================
+plot(Prod02$produccion, type="l", main = "Producto No.2")
+plot(decompose(Prod02.ts))
+acf(Prod02.ts)
+pacf(Prod02.ts)
+
+# Estimar Modelo
+# ===================================================================
+Prod02.arima = auto.arima(x=Prod02.ts)
+Prod02.arima
+Prod02.predict <- predict(Prod02.arima, n.ahead = 16)
+Prod02.rev <- ts((Prod02.predict$pred), start=c(2022,1), freq=12)
+ts.plot(cbind(Prod02.ts, Prod02.rev), lty=1:2,main="Pronóstico para Producto No.2")
+
+```
+
+#### Producto No.3
+```{r}
+# Declarar que se trabaja con serie de tiempo
+# ====================================================================
+Prod03.ts =  ts(Prod03$produccion, start = c(2015,1), frequency = 12)
+
+# Visualizacion de la estructura de datos
+# ====================================================================
+plot(Prod03$produccion, type = "l", main = "Producto No.3")
+plot(decompose(Prod03.ts))
+acf(Prod03.ts)
+pacf(Prod03.ts)
+
+# Estimar Modelo
+# ===================================================================
+Prod03.arima = auto.arima(x=Prod03.ts)
+Prod03.arima
+Prod03.predict <- predict(Prod03.arima, n.ahead = 16)
+Prod03.rev <- ts((Prod03.predict$pred), start=c(2022,1), freq=12)
+ts.plot(cbind(Prod03.ts, Prod03.rev), lty=1:2, main="Pronóstico para Producto No.3")
+
+```
+
+#### Producto No.4
+```{r}
+# Declarar que se trabaja con serie de tiempo
+# ====================================================================
+Prod04.ts =  ts(Prod04$produccion, start = c(2015,1), frequency = 12)
+
+# Visualizacion de la estructura de datos
+# ====================================================================
+plot(Prod04$produccion, type = "l", main = "Producto No.4")
+plot(decompose(Prod04.ts))
+acf(Prod04.ts)
+pacf(Prod04.ts)
+
+# Estimar Modelo
+# ===================================================================
+Prod04.arima = auto.arima(x=Prod04.ts)
+Prod04.arima
+Prod04.predict <- predict(Prod04.arima, n.ahead = 16)
+Prod04.rev <- ts((Prod04.predict$pred), start=c(2022,1), freq=12)
+ts.plot(cbind(Prod04.ts, Prod04.rev), lty=1:2, main="Pronóstico para Producto No.4")
+
+```
+
+#### Producto No.5
+```{r}
+# Declarar que se trabaja con serie de tiempo
+# ====================================================================
+Prod05.ts =  ts(Prod05$produccion, start = c(2015,1), frequency = 12)
+
+# Visualizacion de la estructura de datos
+# ====================================================================
+plot(Prod05$produccion, type = "l", main = "Producto No.5")
+plot(decompose(Prod05.ts))
+acf(Prod05.ts)
+pacf(Prod05.ts)
+
+# Estimar Modelo
+# ===================================================================
+Prod05.arima = auto.arima(x=Prod05.ts)
+Prod05.arima
+Prod05.predict <- predict(Prod05.arima, n.ahead = 16)
+Prod05.rev <- ts((Prod05.predict$pred), start=c(2022,1), freq=12)
+ts.plot(cbind(Prod05.ts, Prod05.rev), lty=1:2, main="Pronóstico para Producto No.5")
+
+```
+
+#### Producto No.6
+```{r}
+# Declarar que se trabaja con serie de tiempo
+# ====================================================================
+Prod06.ts =  ts(Prod06$produccion, start = c(2015,1), frequency = 12)
+
+# Visualizacion de la estructura de datos
+# ====================================================================
+plot(Prod06$produccion, type = "l", main = "Producto No.6")
+plot(decompose(Prod06.ts))
+acf(Prod06.ts)
+pacf(Prod06.ts)
+
+# Estimar Modelo
+# ===================================================================
+Prod06.arima = auto.arima(x=Prod06.ts)
+Prod06.arima
+Prod06.predict <- predict(Prod06.arima, n.ahead = 16)
+Prod06.rev <- ts((Prod06.predict$pred), start=c(2022,1), freq=12)
+ts.plot(cbind(Prod06.ts, Prod06.rev), lty=1:2, main="Pronóstico para Producto No.6")
+
+```
+
+#### Producto No.7
+```{r}
+# Declarar que se trabaja con serie de tiempo
+# ====================================================================
+Prod07.ts =  ts(Prod07$produccion, start = c(2015,1), frequency = 12)
+
+# Visualizacion de la estructura de datos
+# ====================================================================
+plot(Prod07$produccion, type = "l", main = "Producto No.7")
+plot(decompose(Prod07.ts))
+acf(Prod07.ts)
+pacf(Prod07.ts)
+
+# Estimar Modelo
+# ===================================================================
+Prod07.arima = auto.arima(x=Prod07.ts)
+Prod07.arima
+Prod07.predict <- predict(Prod07.arima, n.ahead = 16)
+Prod07.rev <- ts((Prod07.predict$pred), start=c(2022,1), freq=12)
+ts.plot(cbind(Prod07.ts, Prod07.rev), lty=1:2, main="Pronóstico para Producto No.7")
+
+```
+
+#### Producto No.8
+```{r}
+# Declarar que se trabaja con serie de tiempo
+# ====================================================================
+Prod08.ts =  ts(Prod08$produccion, start = c(2015,1), frequency = 12)
+
+# Visualizacion de la estructura de datos
+# ====================================================================
+plot(Prod08$produccion, type = "l", main = "Producto No.8")
+plot(decompose(Prod08.ts))
+acf(Prod08.ts)
+pacf(Prod08.ts)
+
+# Estimar Modelo
+# ===================================================================
+Prod08.arima = auto.arima(x=Prod08.ts)
+Prod08.arima
+Prod08.predict <- predict(Prod08.arima, n.ahead = 16)
+Prod08.rev <- ts((Prod08.predict$pred), start=c(2022,1), freq=12)
+ts.plot(cbind(Prod08.ts, Prod08.rev), lty=1:2, main="Pronóstico para Producto No.8")
+
+```
+
+#### Producto No.9
+```{r}
+# Declarar que se trabaja con serie de tiempo
+# ====================================================================
+Prod09.ts <- ts(Prod09$produccion, start = c(2015,1), frequency = 12)
+
+# Visualizacion de la estructura de datos
+# ====================================================================
+plot(Prod09$produccion, type = "l", main = "Producto No.9")
+plot(decompose(Prod09.ts))
+acf(Prod09.ts)
+pacf(Prod09.ts)
+
+# Estimar Modelo
+# ===================================================================
+Prod09.arima = auto.arima(x=Prod09.ts)
+Prod09.arima
+Prod09.predict = forecast(Prod09.arima, 16, level=20)
+plot(Prod09.predict, main="Pronóstico para Producto No.9 ")
+
+```
+
+#### Producto No.10
+```{r}
+# Declarar que se trabaja con serie de tiempo
+# ====================================================================
+Prod10.ts =  ts(Prod10$produccion, start = c(2015,1), frequency = 12)
+
+# Visualizacion de la estructura de datos
+# ====================================================================
+plot(Prod10$produccion, type = "l", main = "Producto No.10")
+plot(decompose(Prod10.ts))
+acf(Prod10.ts)
+pacf(Prod10.ts)
+
+# Estimar Modelo
+# ===================================================================
+Prod10.arima = auto.arima(x=Prod10.ts)
+Prod10.arima
+Prod10.predict <- predict(Prod10.arima, n.ahead = 16)
+Prod10.rev <- ts((Prod10.predict$pred), start=c(2022,1), freq=12)
+ts.plot(cbind(Prod10.ts, Prod10.rev), lty=1:2, main="Pronóstico para Producto No.10")
+
+```
+
+#### Producto No.11
+```{r}
+# Declarar que se trabaja con serie de tiempo
+# ====================================================================
+Prod11.ts =  ts(Prod11$produccion, start = c(2015,1), frequency = 12)
+
+# Visualizacion de la estructura de datos
+# ====================================================================
+plot(Prod11$produccion, type = "l", main = "Producto No.11")
+plot(decompose(Prod11.ts))
+acf(Prod11.ts)
+pacf(Prod11.ts)
+
+# Estimar Modelo
+# ===================================================================
+Prod11.arima = auto.arima(x=Prod11.ts)
+Prod11.arima
+Prod11.predict = forecast(Prod11.arima, 16, level=20)
+plot(Prod11.predict, main="Pronóstico para Producto No.11 ")
+
+```
+
+#### Producto No.12
+```{r}
+# Declarar que se trabaja con serie de tiempo
+# ====================================================================
+Prod12.ts =  ts(Prod12$produccion, start = c(2015,1), frequency = 12)
+
+# Visualizacion de la estructura de datos
+# ====================================================================
+plot(Prod12$produccion, type = "l", main = "Producto No.12")
+plot(decompose(Prod12.ts))
+acf(Prod12.ts)
+pacf(Prod12.ts)
+
+# Estimar Modelo
+# ===================================================================
+Prod12.arima = auto.arima(x=Prod12.ts)
+Prod12.arima
+Prod12.predict <- predict(Prod12.arima, n.ahead = 16)
+Prod12.rev <- ts((Prod12.predict$pred), start=c(2022,1), freq=12)
+ts.plot(cbind(Prod12.ts, Prod12.rev), lty=1:2, main="Pronóstico para Producto No.12")
+
+```
+
+#### Producto No.13
+```{r}
+# Declarar que se trabaja con serie de tiempo
+# ====================================================================
+Prod13.ts =  ts(Prod13$produccion, start = c(2015,1), frequency = 12)
+
+# Visualizacion de la estructura de datos
+# ====================================================================
+plot(Prod13$produccion, type = "l", main = "Producto No.13")
+plot(decompose(Prod13.ts))
+acf(Prod13.ts)
+pacf(Prod13.ts)
+
+# Estimar Modelo
+# ===================================================================
+Prod13.arima = auto.arima(x=Prod13.ts)
+Prod13.arima
+Prod13.predict <- predict(Prod13.arima, n.ahead = 16)
+Prod13.rev <- ts((Prod13.predict$pred), start=c(2022,1), freq=12)
+ts.plot(cbind(Prod13.ts, Prod13.rev), lty=1:2, main="Pronóstico para Producto No.13")
+
+```
+
+#### Producto No.14
+```{r}
+# Declarar que se trabaja con serie de tiempo
+# ====================================================================
+Prod14.ts =  ts(Prod14$produccion, start = c(2015,1), frequency = 12)
+
+# Visualizacion de la estructura de datos
+# ====================================================================
+plot(Prod14$produccion, type = "l", main = "Producto No.14")
+plot(decompose(Prod14.ts))
+acf(Prod14.ts)
+pacf(Prod14.ts)
+
+# Estimar Modelo
+# ===================================================================
+Prod14.arima = auto.arima(x=Prod14.ts)
+Prod14.arima
+Prod14.predict = forecast(Prod14.arima, 16, level=20)
+plot(Prod14.predict, main="Pronóstico para Producto No.14 ")
+```
+
+#### Producto No.15
+```{r}
+# Declarar que se trabaja con serie de tiempo
+# ====================================================================
+Prod15.ts =  ts(Prod15$produccion, start = c(2015,1), frequency = 12)
+
+# Visualizacion de la estructura de datos
+# ====================================================================
+plot(Prod15$produccion, type = "l", main = "Producto No.15")
+plot(decompose(Prod15.ts))
+acf(Prod15.ts)
+pacf(Prod15.ts)
+
+# Estimar Modelo
+# ===================================================================
+Prod15.arima = auto.arima(x=Prod15.ts)
+Prod15.arima
+Prod15.predict = forecast(Prod15.arima, 16, level=20)
+plot(Prod15.predict, main="Pronóstico para Producto No.15")
+```
+
+#### Producto No.16
+```{r}
+# Declarar que se trabaja con serie de tiempo
+# ====================================================================
+Prod16.ts =  ts(Prod16$produccion, start = c(2015,1), frequency = 12)
+
+# Visualizacion de la estructura de datos
+# ====================================================================
+plot(Prod16$produccion, type = "l", main = "Producto No.16")
+plot(decompose(Prod16.ts))
+acf(Prod16.ts)
+pacf(Prod16.ts)
+
+# Estimar Modelo
+# ===================================================================
+Prod16.arima = auto.arima(x=Prod16.ts)
+Prod16.arima
+Prod16.predict <- predict(Prod16.arima, n.ahead = 16)
+Prod16.rev <- ts((Prod16.predict$pred), start=c(2022,1), freq=12)
+ts.plot(cbind(Prod16.ts, Prod16.rev), lty=1:2)
+
+```
+
+
+
+
+
+
+
+
+
